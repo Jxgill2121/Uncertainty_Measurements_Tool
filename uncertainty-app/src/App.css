@@ -267,6 +267,20 @@ body {
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
+.result-card.highlight {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(20, 184, 166, 0.2));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.result-card.highlight .result-value {
+  color: var(--accent-green);
+  font-size: 1.3rem;
+}
+
+.result-value.range {
+  font-size: 1.2rem;
+}
+
 .result-label {
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -308,6 +322,29 @@ body {
   margin: 0;
   color: var(--text-secondary);
   line-height: 1.7;
+}
+
+.statement-box .report-statement {
+  background: var(--bg-secondary);
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.statement-box .report-statement strong {
+  color: var(--accent-blue);
+}
+
+.statement-box .range-explanation {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.statement-box .range-explanation strong {
+  color: var(--accent-green);
 }
 
 /* Charts Section */

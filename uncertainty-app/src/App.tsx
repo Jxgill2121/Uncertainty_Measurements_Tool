@@ -16,7 +16,6 @@ import {
   type UncertaintyBudget
 } from './calculations/uncertainty';
 import { UncertaintyChart } from './components/UncertaintyChart';
-import { UncertaintyTable } from './components/UncertaintyTable';
 import './App.css';
 
 type MeasurementType = 'pressure' | 'temperature';
@@ -256,11 +255,6 @@ function App() {
                     <UncertaintyChart budget={ptBudget} />
                   </div>
                 </div>
-
-                <div className="table-section">
-                  <h3>Uncertainty Budget</h3>
-                  <UncertaintyTable budget={ptBudget} />
-                </div>
               </div>
             )}
           </div>
@@ -403,11 +397,6 @@ function App() {
                   <div className="chart-container">
                     <UncertaintyChart budget={tcBudget} />
                   </div>
-                </div>
-
-                <div className="table-section">
-                  <h3>Uncertainty Budget</h3>
-                  <UncertaintyTable budget={tcBudget} />
                 </div>
               </div>
             )}

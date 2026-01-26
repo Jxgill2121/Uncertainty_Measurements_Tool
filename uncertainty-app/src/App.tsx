@@ -223,14 +223,6 @@ function App() {
                   </div>
 
                   <div className="result-card">
-                    <div className="result-label">Combined Uncertainty</div>
-                    <div className="result-value">
-                      ±{formatUncertainty(ptBudget.combinedUncertainty)} {ptBudget.unit}
-                    </div>
-                    <div className="result-sublabel">Standard uncertainty (k=1)</div>
-                  </div>
-
-                  <div className="result-card">
                     <div className="result-label">Relative Uncertainty</div>
                     <div className="result-value">
                       ±{ptBudget.relativeUncertainty.toFixed(2)}%
@@ -363,14 +355,6 @@ function App() {
                       {(tcBudget.measurementValue - tcBudget.expandedUncertainty).toFixed(1)} to {(tcBudget.measurementValue + tcBudget.expandedUncertainty).toFixed(1)} {tcBudget.unit}
                     </div>
                     <div className="result-sublabel">True value lies within this range</div>
-                  </div>
-
-                  <div className="result-card">
-                    <div className="result-label">Combined Uncertainty</div>
-                    <div className="result-value">
-                      ±{formatUncertainty(tcBudget.combinedUncertainty)} {tcBudget.unit}
-                    </div>
-                    <div className="result-sublabel">Standard uncertainty (k=1)</div>
                   </div>
 
                   <div className="result-card">

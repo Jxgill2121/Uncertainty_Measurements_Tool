@@ -65,6 +65,139 @@ body {
   width: 100%;
 }
 
+/* Asset Lookup */
+.asset-lookup {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+  max-width: 500px;
+}
+
+.lookup-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.lookup-hint {
+  margin: 0 0 1rem 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.lookup-input-wrapper {
+  position: relative;
+}
+
+.lookup-input {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.lookup-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.lookup-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.lookup-option {
+  padding: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.lookup-option:last-child {
+  border-bottom: none;
+}
+
+.lookup-option:hover {
+  background: var(--bg-tertiary);
+}
+
+.option-asset {
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.option-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.asset-info-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-blue);
+}
+
+.asset-info-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.asset-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.info-value {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.category-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.category-badge.pressure {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--accent-blue);
+}
+
+.category-badge.temperature {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--accent-orange);
+}
+
+.info-value.overdue {
+  color: var(--accent-red);
+  font-weight: 600;
+}
+
 /* Tabs */
 .tabs {
   display: flex;

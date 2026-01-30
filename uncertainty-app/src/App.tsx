@@ -13,9 +13,11 @@ import {
   calculatePTUncertainty,
   calculateTCUncertainty,
   formatUncertainty,
+  generateUncertaintyStatement,
   type UncertaintyBudget
 } from './calculations/uncertainty';
 import { UncertaintyChart } from './components/UncertaintyChart';
+import { UncertaintyTable } from './components/UncertaintyTable';
 import './App.css';
 
 type MeasurementType = 'pressure' | 'temperature';
@@ -214,12 +216,12 @@ function App() {
                     <div className="result-sublabel">95% confidence level</div>
                   </div>
 
-                  <div className="result-card highlight">
-                    <div className="result-label">Measurement Range (95% CI)</div>
-                    <div className="result-value range">
-                      {(ptBudget.measurementValue - ptBudget.expandedUncertainty).toFixed(1)} to {(ptBudget.measurementValue + ptBudget.expandedUncertainty).toFixed(1)} {ptBudget.unit}
+                  <div className="result-card">
+                    <div className="result-label">Combined Uncertainty</div>
+                    <div className="result-value">
+                      ±{formatUncertainty(ptBudget.combinedUncertainty)} {ptBudget.unit}
                     </div>
-                    <div className="result-sublabel">True value lies within this range</div>
+                    <div className="result-sublabel">Standard uncertainty (k=1)</div>
                   </div>
 
                   <div className="result-card">
@@ -232,13 +234,8 @@ function App() {
                 </div>
 
                 <div className="statement-box">
-                  <h3>Official Report Statement</h3>
-                  <p className="report-statement">
-                    "Measured pressure: <strong>{ptBudget.measurementValue.toFixed(1)} ± {formatUncertainty(ptBudget.expandedUncertainty)} {ptBudget.unit}</strong> (k=2, 95% confidence)"
-                  </p>
-                  <p className="range-explanation">
-                    This means you are 95% confident the true pressure is between <strong>{(ptBudget.measurementValue - ptBudget.expandedUncertainty).toFixed(1)} {ptBudget.unit}</strong> and <strong>{(ptBudget.measurementValue + ptBudget.expandedUncertainty).toFixed(1)} {ptBudget.unit}</strong>.
-                  </p>
+                  <h3>Uncertainty Statement</h3>
+                  <p>{generateUncertaintyStatement(ptBudget, 'pressure')}</p>
                 </div>
 
                 <div className="charts-section">
@@ -246,6 +243,11 @@ function App() {
                   <div className="chart-container">
                     <UncertaintyChart budget={ptBudget} />
                   </div>
+                </div>
+
+                <div className="table-section">
+                  <h3>Uncertainty Budget</h3>
+                  <UncertaintyTable budget={ptBudget} />
                 </div>
               </div>
             )}
@@ -349,12 +351,12 @@ function App() {
                     <div className="result-sublabel">95% confidence level</div>
                   </div>
 
-                  <div className="result-card highlight">
-                    <div className="result-label">Measurement Range (95% CI)</div>
-                    <div className="result-value range">
-                      {(tcBudget.measurementValue - tcBudget.expandedUncertainty).toFixed(1)} to {(tcBudget.measurementValue + tcBudget.expandedUncertainty).toFixed(1)} {tcBudget.unit}
+                  <div className="result-card">
+                    <div className="result-label">Combined Uncertainty</div>
+                    <div className="result-value">
+                      ±{formatUncertainty(tcBudget.combinedUncertainty)} {tcBudget.unit}
                     </div>
-                    <div className="result-sublabel">True value lies within this range</div>
+                    <div className="result-sublabel">Standard uncertainty (k=1)</div>
                   </div>
 
                   <div className="result-card">
@@ -367,13 +369,8 @@ function App() {
                 </div>
 
                 <div className="statement-box">
-                  <h3>Official Report Statement</h3>
-                  <p className="report-statement">
-                    "Measured temperature: <strong>{tcBudget.measurementValue.toFixed(1)} ± {formatUncertainty(tcBudget.expandedUncertainty)} {tcBudget.unit}</strong> (k=2, 95% confidence)"
-                  </p>
-                  <p className="range-explanation">
-                    This means you are 95% confident the true temperature is between <strong>{(tcBudget.measurementValue - tcBudget.expandedUncertainty).toFixed(1)} {tcBudget.unit}</strong> and <strong>{(tcBudget.measurementValue + tcBudget.expandedUncertainty).toFixed(1)} {tcBudget.unit}</strong>.
-                  </p>
+                  <h3>Uncertainty Statement</h3>
+                  <p>{generateUncertaintyStatement(tcBudget, 'temperature')}</p>
                 </div>
 
                 <div className="charts-section">
@@ -381,6 +378,11 @@ function App() {
                   <div className="chart-container">
                     <UncertaintyChart budget={tcBudget} />
                   </div>
+                </div>
+
+                <div className="table-section">
+                  <h3>Uncertainty Budget</h3>
+                  <UncertaintyTable budget={tcBudget} />
                 </div>
               </div>
             )}

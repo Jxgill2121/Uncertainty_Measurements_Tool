@@ -155,6 +155,44 @@ body {
   border-left: 3px solid var(--accent-blue);
 }
 
+.asset-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.asset-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.status-active {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--accent-green);
+}
+
+.status-badge.status-missing {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--accent-orange);
+}
+
+.status-badge.status-disposed {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--accent-red);
+}
+
 .asset-info-row {
   display: flex;
   gap: 0.75rem;
@@ -165,10 +203,17 @@ body {
   margin-bottom: 0;
 }
 
+.asset-info-row.highlight {
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.5rem;
+  margin: 0.5rem -0.5rem;
+  border-radius: 4px;
+}
+
 .info-label {
   font-size: 0.8rem;
   color: var(--text-secondary);
-  min-width: 80px;
+  min-width: 90px;
 }
 
 .info-value {
@@ -176,21 +221,9 @@ body {
   color: var(--text-primary);
 }
 
-.category-badge {
-  padding: 0.125rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.category-badge.pressure {
-  background: rgba(59, 130, 246, 0.2);
+.info-value.accuracy {
   color: var(--accent-blue);
-}
-
-.category-badge.temperature {
-  background: rgba(245, 158, 11, 0.2);
-  color: var(--accent-orange);
+  font-weight: 600;
 }
 
 .info-value.overdue {

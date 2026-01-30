@@ -22,7 +22,8 @@ export function AssetLookup({ onAssetSelect }: Props) {
     return assets.filter(a =>
       a.assetNumber.toLowerCase().includes(searchTerm) ||
       a.description.toLowerCase().includes(searchTerm) ||
-      a.serialNumber.toLowerCase().includes(searchTerm)
+      a.manufacturer.toLowerCase().includes(searchTerm) ||
+      a.model.toLowerCase().includes(searchTerm)
     );
   };
 
@@ -66,43 +67,60 @@ export function AssetLookup({ onAssetSelect }: Props) {
         // Find header row and column indices
         const headers = jsonData[0]?.map(h => h?.toString().toLowerCase().trim()) || [];
 
-        const titleIdx = headers.findIndex(h => h?.includes('title') || h?.includes('asset'));
-        const serialIdx = headers.findIndex(h => h?.includes('serial'));
-        const descIdx = headers.findIndex(h => h?.includes('description') || h?.includes('desc'));
-        const calDueIdx = headers.findIndex(h => h?.includes('calibration') || h?.includes('cal'));
-        const locationIdx = headers.findIndex(h => h?.includes('location') || h?.includes('loc'));
-        const categoryIdx = headers.findIndex(h => h?.includes('category') || h?.includes('type'));
+        // Map column names to indices
+        const findCol = (keywords: string[]) =>
+          headers.findIndex(h => h && keywords.some(k => h.includes(k)));
+
+        const assetIdx = findCol(['asset', 'title']);
+        const statusIdx = findCol(['status']);
+        const mfgIdx = findCol(['manufacturer', 'maker', 'mfg']);
+        const modelIdx = findCol(['model']);
+        const descIdx = findCol(['description', 'desc']);
+        const rangeIdx = findCol(['range']);
+        const rangeLowIdx = headers.findIndex(h => h?.includes('range') && h?.includes('low'));
+        const rangeHighIdx = headers.findIndex(h => h?.includes('range') && h?.includes('high'));
+        const rangeUnitsIdx = headers.findIndex(h => h?.includes('range') && h?.includes('unit'));
+        const accuracyIdx = findCol(['accuracy', 'acc']);
+        const calDateIdx = findCol(['check', 'cal', 'date']);
+        const deptIdx = findCol(['department', 'dept']);
+        const outputHighIdx = headers.findIndex(h => h?.includes('output') && h?.includes('high'));
+        const outputLowIdx = headers.findIndex(h => h?.includes('output') && h?.includes('low'));
+        const outputUnitsIdx = headers.findIndex(h => h?.includes('output') && h?.includes('unit'));
 
         // Parse rows into assets
         const newAssets: Asset[] = [];
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i];
-          if (!row || !row[titleIdx]) continue;
+          if (!row || !row[assetIdx]) continue;
 
-          const calDueRaw = row[calDueIdx];
-          let calDue = '';
-          if (calDueRaw) {
-            // Handle Excel date serial numbers
-            if (typeof calDueRaw === 'number') {
-              const date = XLSX.SSF.parse_date_code(calDueRaw);
-              calDue = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+          // Handle date formatting
+          let calDate = '';
+          const calDateRaw = row[calDateIdx];
+          if (calDateRaw) {
+            if (typeof calDateRaw === 'number') {
+              const date = XLSX.SSF.parse_date_code(calDateRaw);
+              calDate = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
             } else {
-              calDue = calDueRaw.toString().slice(0, 10);
+              calDate = calDateRaw.toString().slice(0, 10);
             }
           }
 
-          const categoryRaw = row[categoryIdx]?.toString() || '';
-          let category: 'Pressure' | 'Temperature' | '' = '';
-          if (categoryRaw.toLowerCase().includes('pressure')) category = 'Pressure';
-          else if (categoryRaw.toLowerCase().includes('temp')) category = 'Temperature';
-
           newAssets.push({
-            assetNumber: row[titleIdx]?.toString() || '',
-            serialNumber: row[serialIdx]?.toString() || '',
+            assetNumber: row[assetIdx]?.toString() || '',
+            status: row[statusIdx]?.toString() || '',
+            manufacturer: row[mfgIdx]?.toString() || '',
+            model: row[modelIdx]?.toString() || '',
             description: row[descIdx]?.toString() || '',
-            calibrationDue: calDue,
-            location: row[locationIdx]?.toString() || '',
-            category
+            range: row[rangeIdx]?.toString() || '',
+            rangeLow: row[rangeLowIdx]?.toString() || '',
+            rangeHigh: row[rangeHighIdx]?.toString() || '',
+            rangeUnits: row[rangeUnitsIdx]?.toString() || '',
+            accuracy: row[accuracyIdx]?.toString() || '',
+            calDate,
+            department: row[deptIdx]?.toString() || '',
+            outputHigh: row[outputHighIdx]?.toString() || '',
+            outputLow: row[outputLowIdx]?.toString() || '',
+            outputUnits: row[outputUnitsIdx]?.toString() || ''
           });
         }
 
@@ -128,11 +146,19 @@ export function AssetLookup({ onAssetSelect }: Props) {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    const s = status.toLowerCase();
+    if (s.includes('active')) return 'status-active';
+    if (s.includes('missing')) return 'status-missing';
+    if (s.includes('disposed')) return 'status-disposed';
+    return '';
+  };
+
   return (
     <div className="asset-lookup">
       <div className="lookup-header">
         <h3>Asset Lookup</h3>
-        <p className="lookup-hint">Type asset number to find equipment info</p>
+        <p className="lookup-hint">Type asset number, model, or manufacturer to find equipment</p>
       </div>
 
       <div className="lookup-input-wrapper">
@@ -140,7 +166,7 @@ export function AssetLookup({ onAssetSelect }: Props) {
           type="text"
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Enter asset number (e.g., 33198)"
+          placeholder="Enter asset number (e.g., 33204)"
           className="lookup-input"
         />
         {results.length > 0 && (
@@ -152,7 +178,7 @@ export function AssetLookup({ onAssetSelect }: Props) {
                 onClick={() => handleSelect(asset)}
               >
                 <span className="option-asset">{asset.assetNumber}</span>
-                <span className="option-desc">{asset.description}</span>
+                <span className="option-desc">{asset.manufacturer} {asset.model} - {asset.description}</span>
               </div>
             ))}
           </div>
@@ -161,41 +187,67 @@ export function AssetLookup({ onAssetSelect }: Props) {
 
       {selectedAsset && (
         <div className="asset-info-card">
-          <div className="asset-info-row">
-            <span className="info-label">Asset #:</span>
-            <span className="info-value">{selectedAsset.assetNumber}</span>
+          <div className="asset-info-header">
+            <span className="asset-title">{selectedAsset.assetNumber}</span>
+            <span className={`status-badge ${getStatusColor(selectedAsset.status)}`}>
+              {selectedAsset.status}
+            </span>
           </div>
-          {selectedAsset.serialNumber && (
-            <div className="asset-info-row">
-              <span className="info-label">Serial #:</span>
-              <span className="info-value">{selectedAsset.serialNumber}</span>
-            </div>
-          )}
+
+          <div className="asset-info-row">
+            <span className="info-label">Manufacturer:</span>
+            <span className="info-value">{selectedAsset.manufacturer}</span>
+          </div>
+          <div className="asset-info-row">
+            <span className="info-label">Model:</span>
+            <span className="info-value">{selectedAsset.model}</span>
+          </div>
           <div className="asset-info-row">
             <span className="info-label">Description:</span>
             <span className="info-value">{selectedAsset.description}</span>
           </div>
-          {selectedAsset.category && (
+
+          {selectedAsset.accuracy && (
+            <div className="asset-info-row highlight">
+              <span className="info-label">Accuracy:</span>
+              <span className="info-value accuracy">{selectedAsset.accuracy}</span>
+            </div>
+          )}
+
+          {(selectedAsset.rangeHigh || selectedAsset.range) && (
             <div className="asset-info-row">
-              <span className="info-label">Category:</span>
-              <span className={`info-value category-badge ${selectedAsset.category.toLowerCase()}`}>
-                {selectedAsset.category}
+              <span className="info-label">Range:</span>
+              <span className="info-value">
+                {selectedAsset.rangeLow && `${selectedAsset.rangeLow} to `}
+                {selectedAsset.rangeHigh} {selectedAsset.rangeUnits}
+                {!selectedAsset.rangeHigh && selectedAsset.range}
               </span>
             </div>
           )}
-          {selectedAsset.calibrationDue && (
+
+          {selectedAsset.outputHigh && (
             <div className="asset-info-row">
-              <span className="info-label">Cal Due:</span>
-              <span className={`info-value ${isOverdue(selectedAsset.calibrationDue) ? 'overdue' : ''}`}>
-                {selectedAsset.calibrationDue}
-                {isOverdue(selectedAsset.calibrationDue) && ' (OVERDUE)'}
+              <span className="info-label">Output:</span>
+              <span className="info-value">
+                {selectedAsset.outputLow}-{selectedAsset.outputHigh} {selectedAsset.outputUnits}
               </span>
             </div>
           )}
-          {selectedAsset.location && (
+
+          {selectedAsset.calDate && (
             <div className="asset-info-row">
-              <span className="info-label">Location:</span>
-              <span className="info-value">{selectedAsset.location}</span>
+              <span className="info-label">Cal Date:</span>
+              <span className={`info-value ${isOverdue(selectedAsset.calDate) ? 'overdue' : ''}`}>
+                {selectedAsset.calDate}
+                {isOverdue(selectedAsset.calDate) && ' (OVERDUE)'}
+              </span>
+            </div>
+          )}
+
+          {selectedAsset.department && (
+            <div className="asset-info-row">
+              <span className="info-label">Department:</span>
+              <span className="info-value">{selectedAsset.department}</span>
             </div>
           )}
         </div>

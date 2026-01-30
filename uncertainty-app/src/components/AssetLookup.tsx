@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { searchAssets, type Asset } from '../data/assets';
+import { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
+import { assets as defaultAssets, type Asset } from '../data/assets';
 
 interface Props {
   onAssetSelect?: (asset: Asset) => void;
@@ -9,6 +10,21 @@ export function AssetLookup({ onAssetSelect }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [assets, setAssets] = useState<Asset[]>(defaultAssets);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Search within current assets
+  const searchAssets = (searchQuery: string): Asset[] => {
+    const searchTerm = searchQuery.trim().toLowerCase();
+    if (!searchTerm) return [];
+
+    return assets.filter(a =>
+      a.assetNumber.toLowerCase().includes(searchTerm) ||
+      a.description.toLowerCase().includes(searchTerm) ||
+      a.serialNumber.toLowerCase().includes(searchTerm)
+    );
+  };
 
   const handleSearch = (value: string) => {
     setQuery(value);
@@ -33,6 +49,85 @@ export function AssetLookup({ onAssetSelect }: Props) {
     return dueDate < new Date();
   };
 
+  // Handle Excel file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+
+        // Find header row and column indices
+        const headers = jsonData[0]?.map(h => h?.toString().toLowerCase().trim()) || [];
+
+        const titleIdx = headers.findIndex(h => h?.includes('title') || h?.includes('asset'));
+        const serialIdx = headers.findIndex(h => h?.includes('serial'));
+        const descIdx = headers.findIndex(h => h?.includes('description') || h?.includes('desc'));
+        const calDueIdx = headers.findIndex(h => h?.includes('calibration') || h?.includes('cal'));
+        const locationIdx = headers.findIndex(h => h?.includes('location') || h?.includes('loc'));
+        const categoryIdx = headers.findIndex(h => h?.includes('category') || h?.includes('type'));
+
+        // Parse rows into assets
+        const newAssets: Asset[] = [];
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          if (!row || !row[titleIdx]) continue;
+
+          const calDueRaw = row[calDueIdx];
+          let calDue = '';
+          if (calDueRaw) {
+            // Handle Excel date serial numbers
+            if (typeof calDueRaw === 'number') {
+              const date = XLSX.SSF.parse_date_code(calDueRaw);
+              calDue = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+            } else {
+              calDue = calDueRaw.toString().slice(0, 10);
+            }
+          }
+
+          const categoryRaw = row[categoryIdx]?.toString() || '';
+          let category: 'Pressure' | 'Temperature' | '' = '';
+          if (categoryRaw.toLowerCase().includes('pressure')) category = 'Pressure';
+          else if (categoryRaw.toLowerCase().includes('temp')) category = 'Temperature';
+
+          newAssets.push({
+            assetNumber: row[titleIdx]?.toString() || '',
+            serialNumber: row[serialIdx]?.toString() || '',
+            description: row[descIdx]?.toString() || '',
+            calibrationDue: calDue,
+            location: row[locationIdx]?.toString() || '',
+            category
+          });
+        }
+
+        if (newAssets.length > 0) {
+          setAssets(newAssets);
+          setUploadStatus(`Loaded ${newAssets.length} assets from ${file.name}`);
+          setQuery('');
+          setResults([]);
+          setSelectedAsset(null);
+        } else {
+          setUploadStatus('No valid assets found in file');
+        }
+      } catch (err) {
+        setUploadStatus('Error reading file. Make sure it\'s a valid Excel file.');
+        console.error(err);
+      }
+    };
+    reader.readAsBinaryString(file);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="asset-lookup">
       <div className="lookup-header">
@@ -50,9 +145,9 @@ export function AssetLookup({ onAssetSelect }: Props) {
         />
         {results.length > 0 && (
           <div className="lookup-dropdown">
-            {results.map((asset) => (
+            {results.map((asset, idx) => (
               <div
-                key={asset.assetNumber}
+                key={`${asset.assetNumber}-${idx}`}
                 className="lookup-option"
                 onClick={() => handleSelect(asset)}
               >
@@ -80,12 +175,14 @@ export function AssetLookup({ onAssetSelect }: Props) {
             <span className="info-label">Description:</span>
             <span className="info-value">{selectedAsset.description}</span>
           </div>
-          <div className="asset-info-row">
-            <span className="info-label">Category:</span>
-            <span className={`info-value category-badge ${selectedAsset.category.toLowerCase()}`}>
-              {selectedAsset.category}
-            </span>
-          </div>
+          {selectedAsset.category && (
+            <div className="asset-info-row">
+              <span className="info-label">Category:</span>
+              <span className={`info-value category-badge ${selectedAsset.category.toLowerCase()}`}>
+                {selectedAsset.category}
+              </span>
+            </div>
+          )}
           {selectedAsset.calibrationDue && (
             <div className="asset-info-row">
               <span className="info-label">Cal Due:</span>
@@ -103,6 +200,21 @@ export function AssetLookup({ onAssetSelect }: Props) {
           )}
         </div>
       )}
+
+      <div className="upload-section">
+        <label className="upload-btn">
+          Upload Asset List (.xlsx)
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
+        </label>
+        {uploadStatus && <p className="upload-status">{uploadStatus}</p>}
+        <p className="asset-count">{assets.length} assets loaded</p>
+      </div>
     </div>
   );
 }

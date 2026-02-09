@@ -59,68 +59,105 @@ export function AssetLookup({ onAssetSelect }: Props) {
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
 
-        // Find header row and column indices
-        const headers = jsonData[0]?.map(h => h?.toString().toLowerCase().trim()) || [];
+        if (!jsonData || jsonData.length < 2) {
+          setUploadStatus('File appears empty or has no data rows');
+          return;
+        }
 
-        // Map column names to indices
+        // Find header row - look for row containing "asset" or similar
+        let headerRowIdx = 0;
+        for (let i = 0; i < Math.min(5, jsonData.length); i++) {
+          const row = jsonData[i];
+          if (row && row.some(cell =>
+            cell && cell.toString().toLowerCase().includes('asset')
+          )) {
+            headerRowIdx = i;
+            break;
+          }
+        }
+
+        const headerRow = jsonData[headerRowIdx] || [];
+        const headers = headerRow.map(h => h?.toString().toLowerCase().trim() || '');
+
+        // Map column names to indices with flexible matching
         const findCol = (keywords: string[]) =>
           headers.findIndex(h => h && keywords.some(k => h.includes(k)));
 
-        const assetIdx = findCol(['asset', 'title']);
+        const assetIdx = findCol(['asset', 'title', 'id', 'number']);
         const statusIdx = findCol(['status']);
-        const mfgIdx = findCol(['manufacturer', 'maker', 'mfg']);
-        const modelIdx = findCol(['model']);
-        const descIdx = findCol(['description', 'desc']);
+        const mfgIdx = findCol(['manufacturer', 'maker', 'mfg', 'brand']);
+        const modelIdx = findCol(['model', 'part']);
+        const descIdx = findCol(['description', 'desc', 'name']);
         const rangeIdx = findCol(['range']);
         const rangeLowIdx = headers.findIndex(h => h?.includes('range') && h?.includes('low'));
         const rangeHighIdx = headers.findIndex(h => h?.includes('range') && h?.includes('high'));
         const rangeUnitsIdx = headers.findIndex(h => h?.includes('range') && h?.includes('unit'));
-        const accuracyIdx = findCol(['accuracy', 'acc']);
+        const accuracyIdx = findCol(['accuracy', 'acc', 'tolerance']);
         const calDateIdx = findCol(['check', 'cal', 'date']);
-        const deptIdx = findCol(['department', 'dept']);
+        const deptIdx = findCol(['department', 'dept', 'location']);
         const outputHighIdx = headers.findIndex(h => h?.includes('output') && h?.includes('high'));
         const outputLowIdx = headers.findIndex(h => h?.includes('output') && h?.includes('low'));
         const outputUnitsIdx = headers.findIndex(h => h?.includes('output') && h?.includes('unit'));
 
-        // Parse rows into assets
+        // Debug: log what we found
+        console.log('Headers found:', headers);
+        console.log('Asset column index:', assetIdx);
+        console.log('Total rows:', jsonData.length);
+
+        if (assetIdx === -1) {
+          setUploadStatus(`Could not find asset column. Headers found: ${headers.slice(0, 5).join(', ')}...`);
+          return;
+        }
+
+        // Parse rows into assets (start after header row)
         const newAssets: Asset[] = [];
-        for (let i = 1; i < jsonData.length; i++) {
+        for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
           const row = jsonData[i];
-          if (!row || !row[assetIdx]) continue;
+          if (!row) continue;
+
+          // Get asset value - handle numbers and strings
+          const assetValue = row[assetIdx];
+          if (assetValue === undefined || assetValue === null || assetValue === '') continue;
 
           // Handle date formatting
           let calDate = '';
-          const calDateRaw = row[calDateIdx];
+          const calDateRaw = calDateIdx >= 0 ? row[calDateIdx] : undefined;
           if (calDateRaw) {
             if (typeof calDateRaw === 'number') {
-              const date = XLSX.SSF.parse_date_code(calDateRaw);
-              calDate = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+              try {
+                const date = XLSX.SSF.parse_date_code(calDateRaw);
+                calDate = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+              } catch {
+                calDate = calDateRaw.toString();
+              }
             } else {
               calDate = calDateRaw.toString().slice(0, 10);
             }
           }
 
+          const getCell = (idx: number) => idx >= 0 && row[idx] !== undefined ? row[idx]?.toString() || '' : '';
+
           newAssets.push({
-            assetNumber: row[assetIdx]?.toString() || '',
-            status: row[statusIdx]?.toString() || '',
-            manufacturer: row[mfgIdx]?.toString() || '',
-            model: row[modelIdx]?.toString() || '',
-            description: row[descIdx]?.toString() || '',
-            range: row[rangeIdx]?.toString() || '',
-            rangeLow: row[rangeLowIdx]?.toString() || '',
-            rangeHigh: row[rangeHighIdx]?.toString() || '',
-            rangeUnits: row[rangeUnitsIdx]?.toString() || '',
-            accuracy: row[accuracyIdx]?.toString() || '',
+            assetNumber: assetValue.toString(),
+            status: getCell(statusIdx),
+            manufacturer: getCell(mfgIdx),
+            model: getCell(modelIdx),
+            description: getCell(descIdx),
+            range: getCell(rangeIdx),
+            rangeLow: getCell(rangeLowIdx),
+            rangeHigh: getCell(rangeHighIdx),
+            rangeUnits: getCell(rangeUnitsIdx),
+            accuracy: getCell(accuracyIdx),
             calDate,
-            department: row[deptIdx]?.toString() || '',
-            outputHigh: row[outputHighIdx]?.toString() || '',
-            outputLow: row[outputLowIdx]?.toString() || '',
-            outputUnits: row[outputUnitsIdx]?.toString() || ''
+            department: getCell(deptIdx),
+            outputHigh: getCell(outputHighIdx),
+            outputLow: getCell(outputLowIdx),
+            outputUnits: getCell(outputUnitsIdx)
           });
         }
 
@@ -131,14 +168,14 @@ export function AssetLookup({ onAssetSelect }: Props) {
           setResults([]);
           setSelectedAsset(null);
         } else {
-          setUploadStatus('No valid assets found in file');
+          setUploadStatus(`No valid assets found. Found ${jsonData.length} rows but no asset data.`);
         }
       } catch (err) {
         setUploadStatus('Error reading file. Make sure it\'s a valid Excel file.');
-        console.error(err);
+        console.error('Excel parse error:', err);
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
 
     // Reset file input
     if (fileInputRef.current) {

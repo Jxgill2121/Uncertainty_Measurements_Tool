@@ -23,7 +23,9 @@ export function AssetLookup({ onAssetSelect }: Props) {
       a.assetNumber.toLowerCase().includes(searchTerm) ||
       a.description.toLowerCase().includes(searchTerm) ||
       a.manufacturer.toLowerCase().includes(searchTerm) ||
-      a.model.toLowerCase().includes(searchTerm)
+      a.model.toLowerCase().includes(searchTerm) ||
+      a.category?.toLowerCase().includes(searchTerm) ||
+      a.serialNumber?.toLowerCase().includes(searchTerm)
     );
   };
 
@@ -88,18 +90,28 @@ export function AssetLookup({ onAssetSelect }: Props) {
         const findCol = (keywords: string[]) =>
           headers.findIndex(h => h && keywords.some(k => h.includes(k)));
 
-        const assetIdx = findCol(['asset', 'title', 'id', 'number']);
+        // New template columns
+        const assetIdx = findCol(['asset']);
+        const serialIdx = findCol(['serial']);
+        const descIdx = findCol(['description', 'desc']);
+        const custodianIdx = findCol(['custodian', 'owner']);
+        const noCalIdx = findCol(['no cal', 'calibration required']);
+        const calDueIdx = findCol(['calibration due', 'cal due', 'due']);
+        const locationIdx = findCol(['location']);
+        const notesIdx = findCol(['notes', 'note', 'comment']);
+        const deptIdx = findCol(['department', 'dept']);
+        const modelIdx = findCol(['model']);
+        const mfgIdx = findCol(['manufacturer', 'mfg', 'maker']);
+        const typeIdx = findCol(['type']);
+        const categoryIdx = findCol(['category', 'cat']);
+
+        // Legacy columns (for backward compatibility)
         const statusIdx = findCol(['status']);
-        const mfgIdx = findCol(['manufacturer', 'maker', 'mfg', 'brand']);
-        const modelIdx = findCol(['model', 'part']);
-        const descIdx = findCol(['description', 'desc', 'name']);
         const rangeIdx = findCol(['range']);
         const rangeLowIdx = headers.findIndex(h => h?.includes('range') && h?.includes('low'));
         const rangeHighIdx = headers.findIndex(h => h?.includes('range') && h?.includes('high'));
         const rangeUnitsIdx = headers.findIndex(h => h?.includes('range') && h?.includes('unit'));
         const accuracyIdx = findCol(['accuracy', 'acc', 'tolerance']);
-        const calDateIdx = findCol(['check', 'cal', 'date']);
-        const deptIdx = findCol(['department', 'dept', 'location']);
         const outputHighIdx = headers.findIndex(h => h?.includes('output') && h?.includes('high'));
         const outputLowIdx = headers.findIndex(h => h?.includes('output') && h?.includes('low'));
         const outputUnitsIdx = headers.findIndex(h => h?.includes('output') && h?.includes('unit'));
@@ -124,37 +136,52 @@ export function AssetLookup({ onAssetSelect }: Props) {
           const assetValue = row[assetIdx];
           if (assetValue === undefined || assetValue === null || assetValue === '') continue;
 
-          // Handle date formatting
-          let calDate = '';
-          const calDateRaw = calDateIdx >= 0 ? row[calDateIdx] : undefined;
-          if (calDateRaw) {
-            if (typeof calDateRaw === 'number') {
+          const getCell = (idx: number) => idx >= 0 && row[idx] !== undefined ? row[idx]?.toString() || '' : '';
+
+          // Handle date formatting for calibration due
+          let calibrationDue = '';
+          const calDueRaw = calDueIdx >= 0 ? row[calDueIdx] : undefined;
+          if (calDueRaw) {
+            if (typeof calDueRaw === 'number') {
               try {
-                const date = XLSX.SSF.parse_date_code(calDateRaw);
-                calDate = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+                const date = XLSX.SSF.parse_date_code(calDueRaw);
+                calibrationDue = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
               } catch {
-                calDate = calDateRaw.toString();
+                calibrationDue = calDueRaw.toString();
               }
             } else {
-              calDate = calDateRaw.toString().slice(0, 10);
+              calibrationDue = calDueRaw.toString().slice(0, 10);
             }
           }
 
-          const getCell = (idx: number) => idx >= 0 && row[idx] !== undefined ? row[idx]?.toString() || '' : '';
+          // Handle "No Calibration Required" - can be boolean or string
+          const noCalRaw = noCalIdx >= 0 ? row[noCalIdx] : undefined;
+          const noCalRequired = noCalRaw === true ||
+            (typeof noCalRaw === 'string' && noCalRaw.toLowerCase() === 'true') ||
+            (typeof noCalRaw === 'string' && noCalRaw.toLowerCase() === 'yes');
 
           newAssets.push({
             assetNumber: assetValue.toString(),
-            status: getCell(statusIdx),
-            manufacturer: getCell(mfgIdx),
-            model: getCell(modelIdx),
+            serialNumber: getCell(serialIdx),
             description: getCell(descIdx),
+            custodian: getCell(custodianIdx),
+            noCalRequired,
+            calibrationDue,
+            location: getCell(locationIdx),
+            notes: getCell(notesIdx),
+            department: getCell(deptIdx),
+            model: getCell(modelIdx),
+            manufacturer: getCell(mfgIdx),
+            type: getCell(typeIdx),
+            category: getCell(categoryIdx),
+            // Legacy fields
+            status: getCell(statusIdx),
             range: getCell(rangeIdx),
             rangeLow: getCell(rangeLowIdx),
             rangeHigh: getCell(rangeHighIdx),
             rangeUnits: getCell(rangeUnitsIdx),
             accuracy: getCell(accuracyIdx),
-            calDate,
-            department: getCell(deptIdx),
+            calDate: calibrationDue,
             outputHigh: getCell(outputHighIdx),
             outputLow: getCell(outputLowIdx),
             outputUnits: getCell(outputUnitsIdx)
@@ -226,9 +253,13 @@ export function AssetLookup({ onAssetSelect }: Props) {
         <div className="asset-info-card">
           <div className="asset-info-header">
             <span className="asset-title">{selectedAsset.assetNumber}</span>
-            <span className={`status-badge ${getStatusColor(selectedAsset.status)}`}>
-              {selectedAsset.status}
-            </span>
+            {selectedAsset.noCalRequired ? (
+              <span className="status-badge status-no-cal">No Cal Required</span>
+            ) : selectedAsset.status ? (
+              <span className={`status-badge ${getStatusColor(selectedAsset.status)}`}>
+                {selectedAsset.status}
+              </span>
+            ) : null}
           </div>
 
           <div className="asset-info-row">
@@ -243,6 +274,27 @@ export function AssetLookup({ onAssetSelect }: Props) {
             <span className="info-label">Description:</span>
             <span className="info-value">{selectedAsset.description}</span>
           </div>
+
+          {selectedAsset.serialNumber && (
+            <div className="asset-info-row">
+              <span className="info-label">Serial No:</span>
+              <span className="info-value">{selectedAsset.serialNumber}</span>
+            </div>
+          )}
+
+          {selectedAsset.category && (
+            <div className="asset-info-row">
+              <span className="info-label">Category:</span>
+              <span className="info-value">{selectedAsset.category}</span>
+            </div>
+          )}
+
+          {selectedAsset.type && (
+            <div className="asset-info-row">
+              <span className="info-label">Type:</span>
+              <span className="info-value">{selectedAsset.type}</span>
+            </div>
+          )}
 
           {selectedAsset.accuracy && (
             <div className="asset-info-row highlight">
@@ -271,13 +323,27 @@ export function AssetLookup({ onAssetSelect }: Props) {
             </div>
           )}
 
-          {selectedAsset.calDate && (
+          {selectedAsset.calibrationDue && !selectedAsset.noCalRequired && (
             <div className="asset-info-row">
-              <span className="info-label">Cal Date:</span>
-              <span className={`info-value ${isOverdue(selectedAsset.calDate) ? 'overdue' : ''}`}>
-                {selectedAsset.calDate}
-                {isOverdue(selectedAsset.calDate) && ' (OVERDUE)'}
+              <span className="info-label">Cal Due:</span>
+              <span className={`info-value ${isOverdue(selectedAsset.calibrationDue) ? 'overdue' : ''}`}>
+                {selectedAsset.calibrationDue}
+                {isOverdue(selectedAsset.calibrationDue) && ' (OVERDUE)'}
               </span>
+            </div>
+          )}
+
+          {selectedAsset.custodian && (
+            <div className="asset-info-row">
+              <span className="info-label">Custodian:</span>
+              <span className="info-value">{selectedAsset.custodian}</span>
+            </div>
+          )}
+
+          {selectedAsset.location && (
+            <div className="asset-info-row">
+              <span className="info-label">Location:</span>
+              <span className="info-value">{selectedAsset.location}</span>
             </div>
           )}
 
@@ -285,6 +351,13 @@ export function AssetLookup({ onAssetSelect }: Props) {
             <div className="asset-info-row">
               <span className="info-label">Department:</span>
               <span className="info-value">{selectedAsset.department}</span>
+            </div>
+          )}
+
+          {selectedAsset.notes && (
+            <div className="asset-info-row">
+              <span className="info-label">Notes:</span>
+              <span className="info-value notes">{selectedAsset.notes}</span>
             </div>
           )}
         </div>

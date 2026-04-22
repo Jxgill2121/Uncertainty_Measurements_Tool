@@ -28,24 +28,8 @@ export interface Asset {
   outputUnits?: string;
 }
 
-// Default assets from "new_template_for_instruments.xlsx"
-export const assets: Asset[] = [
-  {
-    assetNumber: "33580",
-    serialNumber: "44726",
-    description: "Low Pressure Mass Flowmeter",
-    custodian: "Wilfredo Pingol",
-    noCalRequired: true,
-    calibrationDue: "",
-    location: "Component Lab",
-    notes: "No cal required as per Colin ( June 2022)",
-    department: "Advanced Transportation",
-    model: "CMS2000BTSH200100",
-    manufacturer: "Azbil",
-    type: "C",
-    category: "Flow"
-  }
-];
+// Upload your asset list via the Excel upload button in the app
+export const assets: Asset[] = [];
 
 // Lookup function
 export function findAsset(assetNumber: string): Asset | undefined {
